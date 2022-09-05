@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producer | {{ meta.event_name }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <style type="text/tailwindcss">
+        h2 { @apply text-2xl font-bold mb-2 mt-6; }
+    </style>
+</head>
+<body>
+    <header class="p-4 bg-red-800 text-white mb-4 flex justify-between">
+        <h1>{{ meta.event_name }} | PRODUCER</h1>
+    </header>
+    <div id="app" class="max-w-7xl mx-auto px-4">
+        <section id="key">
+            <h2>Admin Key</h2>
+            <input aria-label="Admin Key" v-model="key" type="text" placeholder="Set Admin Key" @keyup.enter="saveAdminKey">
+        </section>
+        <section id="chat">
+            <h2>Chat Moderation <span @click="clearMessages" class="text-blue-600 cursor-pointer text-sm">[clear queue]</span></h2>
+            <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm">
+                <ol ref="messages" class="h-[250px] flex flex-col gap-1 overflow-y-auto">
+                    <li v-for="m in chat.messages">
+                        <small class="text-xs">
+                            <b>{% m.name %}</b>
+                            <span class="text-gray-500">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
+                            <span @click="deleteMessage(m)" class="text-red-600 cursor-pointer">[delete]</span>
+                        </small>
+                        <p>{% m.message %}</p>
+                    </li>
+                </ol>
+            </div>
+            <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm mt-6">
+                <h2 class="!my-0">Chat Message Reports</h2>
+                <ol ref="messages" class="flex flex-col gap-1 mt-0">
+                    <li v-for="m in chat.reports">
+                        <small class="text-xs">
+                            <b>{% m.name %}</b>
+                            <span class="text-gray-500">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
+                            <span class="text-gray-500">Reported by {% m.reporter_name %}</span>
+                            <span @click="deleteMessage(m)" class="text-red-600 cursor-pointer">[delete]</span>
+                            <span @click="clearMessage(m)" class="text-blue-600 cursor-pointer">[clear]</span>
+                        </small>
+                        <p>{% m.message %}</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+        <section id="live" v-if="state">
+            <h2>Update State</h2>
+            <div class="flex items-end gap-4">
+                <div class="flex flex-col">
+                    <label for="status">Live Status</label>
+                    <select v-model="state.status" id="status">
+                        <option value="live">Live</option>
+                        <option value="off-air">Not Live</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label for="mux">Mux Playback ID</label>
+                    <input type="text" v-model="state.mux_playback_id" placeholder="Mux Playback ID" id="mux">
+                </div>
+                <div class="flex flex-col">
+                    <label for="message">Not Live Message</label>
+                    <input type="text" v-model="state.not_live_text" placeholder="Not Live Message" id="message">
+                </div>
+                <button @click="updateState" class="bg-red-800 text-white px-4 py-2 text-base">SUBMIT</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://static.opentok.com/v2/js/opentok.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
+    <script src="/luxon.js"></script>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            delimiters: ['{%', '%}'],
+            data: {
+                luxon: luxon.DateTime,
+                key: '',
+                state: false,
+                chat: {
+                    session: false,
+                    messages: [],
+                    reports: []
+                }
+            },
+            async created() {
+                const key = localStorage.getItem('key')
+                if(key) this.key = key
+
+                const messages = localStorage.getItem('chat')
+                if(messages) this.chat.messages = JSON.parse(messages)
+
+                const state = await fetch('/state').then(r => r.json())
+                this.state = state.meta
+
+                this.fetchReports()
+                setInterval(this.fetchReports, 3000);
+
+                const openTok = await fetch('/chat-token').then(r => r.json())
+                this.chat.session = OT.initSession(openTok.apiKey, openTok.sessionId)
+                this.chat.session.connect(openTok.token)
+                this.chat.session.on('signal', this.receiveSignal)
+            },
+            mounted() {
+                const m = this.$refs.messages
+                m.scrollTop = m.scrollHeight
+            },
+            methods: {
+                saveAdminKey() {
+                    localStorage.setItem('key', this.key)
+                    alert(`Saved admin key as ${this.key}`)
+                },
+                receiveSignal(data) {
+                    const type = data.type.split(':')[1]
+                    if(type == 'createMessage') this.receiveCreateMessage(data)
+                    if(type == 'deleteMessage') this.receiveDeleteMessage(data)
+                    if(type == 'updateState') this.receiveUpdateState(data)
+                },
+                receiveCreateMessage({ data, from }) {
+                    const { name, message, sent } = JSON.parse(data)
+                    this.chat.messages.push({ name, message, sent })
+                    const m = this.$refs.messages
+                    Vue.nextTick(() => { m.scrollTop = m.scrollHeight })
+                    localStorage.setItem('chat', JSON.stringify(this.chat.messages))
+                },
+                async deleteMessage(msg) {
+                    const { message, name, sent, id } = msg
+                    const payload = { message, name, sent, key: this.key }
+                    if(id) payload.id = id
+
+                    try {
+                        const opts = {
+                            method: 'POST',
+                            body: JSON.stringify(payload),
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                        const resp = await fetch('/delete-message', opts).then(r => r.json())
+                        if(resp.error) throw resp.error
+                    } catch(error) {
+                        alert(error)
+                    }
+                },
+                async clearMessage(msg) {
+                    try {
+                        const opts = {
+                            method: 'POST',
+                            body: JSON.stringify({ id: msg.id, update: { outcome: 'cleared' }, key: this.key }),
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                        const resp = await fetch('/report-update', opts).then(r => r.json())
+                        if(resp.error) throw resp.error
+                    } catch(error) {
+                        alert(error)
+                    }
+                },
+                async updateState() {
+                    try {
+                        const opts = {
+                            method: 'POST',
+                            body: JSON.stringify({ ...this.state, key: this.key }),
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                        const resp = await fetch('/update-state', opts).then(r => r.json())
+                        if(resp.error) throw resp.error
+                    } catch(error) {
+                        alert(error)
+                    }
+                },
+                receiveDeleteMessage({data: sent}) {
+                    this.chat.messages = this.chat.messages.filter(message => message.sent != sent)
+                    localStorage.setItem('chat', JSON.stringify(this.chat.messages))
+                    alert('Message deleted')
+                },
+                receiveUpdateState(data) {
+                    alert('State updated')
+                },
+                clearMessages() {
+                    this.chat.messages = []
+                    localStorage.removeItem('chat')
+                },
+                async fetchReports() {
+                    if(this.key) {
+                        this.chat.reports = await fetch(`/reports?key=${this.key}`).then(r => r.json())
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>

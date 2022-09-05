@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ meta.event_name }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <style type="text/tailwindcss">
+        h2 { @apply text-2xl font-bold mb-2; }
+        .button { @apply text-sm bg-red-500 text-white px-4 py-2; }
+        #chat form { @apply bg-gray-100; }
+        #chat form label { @apply block text-sm font-medium text-gray-700; }
+        #chat form > div { @apply relative mt-1 rounded-md shadow-sm; }
+        #chat form input[type=text] { @apply block w-full rounded-md border-gray-300 pr-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm; }
+        #chat form button { @apply absolute inset-y-0 right-0 flex items-center mr-3; }
+        #chat form svg { @apply h-5 w-5 cursor-pointer; }
+    </style>
+</head>
+<body>
+    <header class="p-4 bg-black text-white mb-4 flex justify-between">
+        <h1>{{ meta.event_name }}</h1>
+        <nav class="flex gap-4">
+            {{#each nav}}
+                <a href="{{ this.url }}">{{ this.text }}</a>
+            {{/each}}
+        </nav>
+    </header>
+    <div id="app" class="max-w-7xl mx-auto px-4">
+        <div v-if="!state" class="w-full flex justify-center">
+            <img class="mt-12 w-12" src="/puff.svg" />
+        </div>
+
+        <div class="grid grid-cols-4 gap-4 mb-16" v-if="state && state.status == 'live'">
+            <main class="col-span-3 flex flex-col gap-4">
+                <div>
+                    <section id="video">
+                        <mux-player stream-type="live" :playback-id="state.mux_playback_id" class="w-full" />
+                    </section>
+                    <div id="captions" class="p-4 bg-black text-white">
+                        <p>Captions</p>
+                    </div>
+                </div>
+            </main>
+            <aside class="col-span-1 flex flex-col">
+                <section id="chat">
+                    <h2>Join the Chat</h2>
+
+                    <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm">
+                        <ol ref="messages" class="h-[500px] flex flex-col gap-1 overflow-y-auto mb-2">
+                            <li v-for="m in chat.messages">
+                                <small class="text-xs">
+                                    <b>{% m.name %}</b>
+                                    <span class="text-gray-500">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
+                                    <button @click="reportMessage(m)" class="text-red-600">[report]</button>
+                                </small>
+                                <p>{% m.message %}</p>
+                            </li>
+                        </ol>
+
+                        <form v-if="chat.showNameForm" @submit.prevent="saveName">
+                            <div>
+                                <input aria-label="Display Name" v-model="chat.name" type="text" name="name" id="name" placeholder="Set Display Name">
+                                <button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="text-green-600">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </form>
+
+                        <form v-if="!chat.showNameForm" @submit.prevent="sendMessage">
+                            <div>
+                                <input v-model="chat.message" type="text" name="message" id="message" aria-label="Message" placeholder="Your message">
+                                <button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="text-blue-600">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0V8.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L6.2 9.74a.75.75 0 101.1 1.02l1.95-2.1v4.59z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </form>
+                        <button aria-label="Change Display Name" v-if="!chat.showNameForm" @click="chat.showNameForm = true" class="text-xs text-gray-500">Messaging as {% chat.name %} [change]</button>
+                        <span v-else class="text-xs text-gray-500">This will be shown with messages</span>
+                    </div>
+
+                </section>
+
+                <section id="sponsors" class="mt-4">
+                    <h2>Sponsors</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        {{#each sponsors}}
+                            <a href="{{this.url}}">
+                                <img src="{{this.image.0.url}}" alt="{{this.alt}}">
+                            </a>
+                        {{/each}}
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <div v-if="state && state.status != 'live'" class="box bg-gray-100 border rounded shadow-sm text-3xl font-bold p-4">
+            <p>{% state.not_live_text %}</p>
+        </div>
+    </div>
+
+    <script src="https://static.opentok.com/v2/js/opentok.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
+    <script src="https://unpkg.com/@mux/mux-player"></script>
+    <script src="/luxon.js"></script>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            delimiters: ['{%', '%}'],
+            data: {
+                luxon: luxon.DateTime,
+                state: false,
+                chat: {
+                    session: false,
+                    messages: [],
+                    name: '',
+                    message: '',
+                    connected: false,
+                    showNameForm: true
+                }
+            },
+            async created() {
+                const chatName = localStorage.getItem('name')
+                if(chatName) {
+                    this.chat.name = chatName
+                    this.chat.showNameForm = false
+                }
+
+                const state = await fetch('/state').then(r => r.json())
+                this.state = state.meta
+
+                const openTok = await fetch('/chat-token').then(r => r.json())
+                this.chat.session = OT.initSession(openTok.apiKey, openTok.sessionId)
+                this.chat.session.connect(openTok.token)
+                this.chat.session.on('sessionConnected', this.connectedToChat)
+                this.chat.session.on('signal', this.receiveSignal)
+            },
+            methods: {
+                connectedToChat(data) {
+                    // TODO: Disable chat box until this point
+                },
+                saveName() {
+                    if(!this.chat.name) return
+                    localStorage.setItem('name', this.chat.name)
+                    this.chat.showNameForm = false
+                },
+                receiveSignal(data) {
+                    const type = data.type.split(':')[1]
+                    if(type == 'createMessage') this.receiveCreateMessage(data)
+                    if(type == 'deleteMessage') this.receiveDeleteMessage(data)
+                    if(type == 'updateState') this.receiveUpdateState(data)
+                },
+                sendMessage() {
+                    if(!this.chat.message || !this.chat.name) return
+                    const data = JSON.stringify({ name: this.chat.name, message: this.chat.message, sent: new Date().toISOString() })
+                    this.chat.session.signal({ type: 'createMessage', data }, (err) => { if(err) alert(err) })
+                    this.chat.message = ''
+                },
+                receiveCreateMessage({ data, from }) {
+                    const { name, message, sent } = JSON.parse(data)
+                    this.chat.messages.push({ name, message, sent })
+                    localStorage.setItem('chat', JSON.stringify(this.chat.messages))
+
+                    // Handle scrolling
+                    const m = this.$refs.messages
+                    const scrolledToBottom = m.clientHeight-10 < Math.abs(Math.ceil(m.scrollHeight - m.scrollTop)) && Math.abs(Math.ceil(m.scrollHeight - m.scrollTop)) < m.clientHeight+10
+                    const wasMe = from.connectionId == this.chat.session.connection.connectionId
+
+                    Vue.nextTick(() => {
+                        if(scrolledToBottom || wasMe) m.scrollTop = m.scrollHeight
+                    })
+                },
+                receiveDeleteMessage({data: sent}) {
+                    this.chat.messages = this.chat.messages.filter(message => message.sent != sent)
+                },
+                receiveUpdateState({data}) {
+                    this.state = data
+                },
+                async reportMessage(message) {
+                    try {
+                        const opts = {
+                            method: 'POST',
+                            body: JSON.stringify({ ...message, reporter_name: this.chat.name }),
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                        const resp = await fetch('/report-message', opts).then(r => r.json())
+                        if(resp.error) throw resp.error
+                    } catch(error) {
+                        alert(error)
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>

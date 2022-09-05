@@ -1,0 +1,15 @@
+{
+  "name": "event-live-platform",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx nodemon -e js,html index.js"
+  },
+  "dependencies": {
+    "airtable": "^0.11.4",
+    "dotenv": "^16.0.2",
+    "express": "^4.18.1",
+    "hbs": "^4.2.0",
+    "opentok": "^2.14.3"
+  }
+}
