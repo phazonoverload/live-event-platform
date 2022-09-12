@@ -5,9 +5,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ meta.event_name }}</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="{{ meta.font_cdn }}" rel="stylesheet" />
+    <script src="https://unpkg.com/@mux/mux-player"></script>
+    <script defer src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['{{ meta.font_family }}', 'sans-serif'] }}}
+        }
+    </script>
     <style type="text/tailwindcss">
-        h2 { @apply text-2xl font-bold mb-2; }
+        h2 { @apply text-2xl font-bold mb-2; color: {{ meta.page_color_text }}; }
         .button { @apply text-sm bg-red-500 text-white px-4 py-2; }
         #chat form { @apply bg-gray-100; }
         #chat form label { @apply block text-sm font-medium text-gray-700; }
@@ -17,9 +26,9 @@
         #chat form svg { @apply h-5 w-5 cursor-pointer; }
     </style>
 </head>
-<body>
-    <header class="p-4 bg-black text-white mb-4 flex justify-between">
-        <h1>{{ meta.event_name }}</h1>
+<body style="background: {{ meta.page_color_bg }}">
+    <header class="p-4 mb-4 flex justify-between" style="background: {{ meta.header_color_bg }}; color: {{ meta.header_color_text }}">
+        <h1 class="font-bold">{{ meta.event_name }}</h1>
         <nav class="flex gap-4">
             {{#each nav}}
                 <a href="{{ this.url }}">{{ this.text }}</a>
@@ -31,15 +40,23 @@
             <img class="mt-12 w-12" src="/puff.svg" />
         </div>
 
-        <div class="grid grid-cols-4 gap-4 mb-16" v-if="state && state.status == 'live'">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-y-4 lg:gap-x-4 mb-16" v-if="state && state.status == 'live'">
             <main class="col-span-3 flex flex-col gap-4">
                 <div>
                     <section id="video">
-                        <mux-player stream-type="live" :playback-id="state.mux_playback_id" class="w-full" />
+                        <mux-player stream-type="live" :playback-id="state.mux_playback_id" controls class="w-full" />
+                        <!-- <video controls></video> -->
                     </section>
-                    <div id="captions" class="p-4 bg-black text-white">
-                        <p>Captions</p>
+
+                    <div id="captions" class="mt-2">
+                        <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=24&spacing=1.5`" frameborder="0" class="h-56 w-full"></iframe>
+
+                        <div v-if="state.captions == 'deepgram'" class="p-4 bg-black text-white">
+                            <p>Deepgram Captions</p>
+                        </div>
                     </div>
+
+                    <pre>{% state.mux_playback_id %}</pre>
                 </div>
             </main>
             <aside class="col-span-1 flex flex-col">
@@ -47,16 +64,17 @@
                     <h2>Join the Chat</h2>
 
                     <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm">
-                        <ol ref="messages" class="h-[500px] flex flex-col gap-1 overflow-y-auto mb-2">
+                        <ol ref="messages" class="h-[500px] flex flex-col gap-2 overflow-y-auto mb-2">
                             <li v-for="m in chat.messages">
-                                <small class="text-xs">
+                                <small class="text-xs block -mb-1">
                                     <b>{% m.name %}</b>
-                                    <span class="text-gray-500">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
+                                    <span class="text-gray-500 my-2">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
                                     <button @click="reportMessage(m)" class="text-red-600">[report]</button>
                                 </small>
                                 <p>{% m.message %}</p>
                             </li>
                         </ol>
+
 
                         <form v-if="chat.showNameForm" @submit.prevent="saveName">
                             <div>
@@ -71,7 +89,7 @@
 
                         <form v-if="!chat.showNameForm" @submit.prevent="sendMessage">
                             <div>
-                                <input v-model="chat.message" type="text" name="message" id="message" aria-label="Message" placeholder="Your message">
+                                <input v-model="chat.message" type="text" name="message" id="message" aria-label="Message" :placeholder="chat.chatAvailable ? 'Your message' : 'Connecting to chat'" :disabled="!chat.chatAvailable" :class="{ 'bg-gray-200': !chat.chatAvailable }">
                                 <button>
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="text-blue-600">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0V8.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L6.2 9.74a.75.75 0 101.1 1.02l1.95-2.1v4.59z" clip-rule="evenodd" />
@@ -105,7 +123,6 @@
 
     <script src="https://static.opentok.com/v2/js/opentok.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
-    <script src="https://unpkg.com/@mux/mux-player"></script>
     <script src="/luxon.js"></script>
     <script>
         const app = new Vue({
@@ -120,7 +137,8 @@
                     name: '',
                     message: '',
                     connected: false,
-                    showNameForm: true
+                    showNameForm: true,
+                    chatAvailable: false
                 }
             },
             async created() {
@@ -141,7 +159,7 @@
             },
             methods: {
                 connectedToChat(data) {
-                    // TODO: Disable chat box until this point
+                    this.chat.chatAvailable = true
                 },
                 saveName() {
                     if(!this.chat.name) return
