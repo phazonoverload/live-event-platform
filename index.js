@@ -31,8 +31,6 @@ app.get('/', async (_, res) => {
 })
 
 app.get('/producer', async (_, res) => {
-    // Update phase w mux playback id (send as API call, save in AT and send signal from backend)
-    // Deepgram listen
     const base = await getAllTables()
     res.render('producer', base)
 })
@@ -83,18 +81,22 @@ app.post('/report-message', async (req, res) => {
 
 app.post('/update-state', async (req, res) => {
     try {
+        console.log(req.body)
         if(req.body.key != process.env.ADMIN_KEY) throw 'Incorrect key'
         delete req.body.key
         const meta = await getTable(tables.find(t => t.name == 'meta'), { returnId: true })
-        const payload = Object.entries(meta).map(([k, v]) => ({id: v.id, fields: { key: k, value: req.body[k] }}))
+        let payload = Object.entries(meta).map(([k, v]) => ({id: v.id, fields: { key: k, value: req.body[k] }}))
+        for(let property of ['event_name', 'event_description', 'streamtext', 'font_cdn', 'font_family', 'header_color_bg', 'header_color_text', 'page_color_bg', 'page_color_text']) {
+            payload = payload.filter(p => p.fields.key != property)
+        }
 
         airtable('meta').update(payload, (error, records) => {
-            if(error) throw error
+            if(error) {console.log(error); throw error;}
             OT.signal(process.env.OPENTOK_API_SESSION_ID, null, { type: 'updateState', data: req.body }, (error) => { if(error) throw error })
             res.json({ message: 'Updated state' })
         })
     } catch(error) {
-        console.log({error})
+        console.log({ error })
         res.json({ error })
     }
 })
