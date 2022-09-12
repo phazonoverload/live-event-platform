@@ -81,7 +81,6 @@ app.post('/report-message', async (req, res) => {
 
 app.post('/update-state', async (req, res) => {
     try {
-        console.log(req.body)
         if(req.body.key != process.env.ADMIN_KEY) throw 'Incorrect key'
         delete req.body.key
         const meta = await getTable(tables.find(t => t.name == 'meta'), { returnId: true })
