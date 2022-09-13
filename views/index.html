@@ -26,9 +26,9 @@
     </style>
 </head>
 <body style="background: {{ meta.page_color_bg }}">
-    <header class="p-4 mb-4 flex justify-between" style="background: {{ meta.header_color_bg }}; color: {{ meta.header_color_text }}">
+    <header class="p-4 mb-4 flex flex-col md:flex-row justify-between" style="background: {{ meta.header_color_bg }}; color: {{ meta.header_color_text }}">
         <h1 class="font-bold">{{ meta.event_name }}</h1>
-        <nav class="flex gap-4">
+        <nav class="flex md:gap-4 flex-col md:flex-row mt-2 md:mt-0">
             {{#each nav}}
                 <a href="{{ this.url }}">{{ this.text }}</a>
             {{/each}}
@@ -48,7 +48,7 @@
                     </section>
 
                     <div id="captions" class="mt-2">
-                        <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=24&spacing=1.5`" frameborder="0" class="h-56 w-full"></iframe>
+                        <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=18&spacing=1.5`" frameborder="0" class="h-56 w-full"></iframe>
 
                         <div v-if="state.captions == 'deepgram'" class="p-4 bg-black text-white">
                             <p>Deepgram Captions</p>
