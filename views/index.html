@@ -57,11 +57,11 @@
                 </div>
             </main>
             <aside class="col-span-1 flex flex-col">
-                <section id="chat">
+                <section id="chat" aria-live="off">
                     <h2>Join the Chat</h2>
 
                     <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm">
-                        <ol ref="messages" class="h-[500px] flex flex-col gap-4 overflow-y-auto mb-2" aria-live="off">
+                        <ol ref="messages" class="h-[500px] flex flex-col gap-4 overflow-y-auto mb-2">
                             <li v-for="m in chat.messages">
                                 <small class="text-xs block -mb-1">
                                     <div class="flex gap-2">
