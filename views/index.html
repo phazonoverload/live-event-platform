@@ -48,7 +48,7 @@
                     </section>
 
                     <div id="captions" class="mt-2">
-                        <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=18&spacing=1.5`" frameborder="0" class="h-56 w-full"></iframe>
+                        <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=18&spacing=1.5`" frameborder="0" class="h-56 w-full" title="Captions" aria-live="polite"></iframe>
 
                         <div v-if="state.captions == 'deepgram'" class="p-4 bg-black text-white">
                             <p>Deepgram Captions</p>
@@ -61,14 +61,16 @@
                     <h2>Join the Chat</h2>
 
                     <div class="box bg-gray-100 border p-4 pt-3 rounded shadow-sm">
-                        <ol ref="messages" class="h-[500px] flex flex-col gap-2 overflow-y-auto mb-2">
+                        <ol ref="messages" class="h-[500px] flex flex-col gap-4 overflow-y-auto mb-2" aria-live="polite">
                             <li v-for="m in chat.messages">
                                 <small class="text-xs block -mb-1">
-                                    <b>{% m.name %}</b>
-                                    <span class="text-gray-500 my-2">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
-                                    <button @click="reportMessage(m)" class="text-red-600">[report]</button>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-bold">{% m.name %}</h3>
+                                        <span class="text-gray-500">{% luxon.fromISO(m.sent).toLocaleString(luxon.TIME_24_SIMPLE) %}</span>
+                                        <button @click="reportMessage(m)" class="text-red-600">[report]</button>
+                                    </div>
                                 </small>
-                                <p>{% m.message %}</p>
+                                <p class="leading-tight mt-1">{% m.message %}</p>
                             </li>
                         </ol>
 
@@ -76,7 +78,7 @@
                         <form v-if="chat.showNameForm" @submit.prevent="saveName">
                             <div>
                                 <input aria-label="Display Name" v-model="chat.name" type="text" name="name" id="name" placeholder="Set Display Name">
-                                <button>
+                                <button aria-label="Set Name">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="text-green-600">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
                                     </svg>
@@ -87,7 +89,7 @@
                         <form v-if="!chat.showNameForm" @submit.prevent="sendMessage">
                             <div>
                                 <input v-model="chat.message" type="text" name="message" id="message" aria-label="Message" :placeholder="chat.chatAvailable ? 'Your message' : 'Connecting to chat'" :disabled="!chat.chatAvailable" :class="{ 'bg-gray-200': !chat.chatAvailable }">
-                                <button>
+                                <button aria-label="Send">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="text-blue-600">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0V8.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L6.2 9.74a.75.75 0 101.1 1.02l1.95-2.1v4.59z" clip-rule="evenodd" />
                                     </svg>
