@@ -46,12 +46,8 @@
                         <mux-player stream-type="live" :playback-id="state.mux_playback_id" controls class="w-full" />
                     </section>
 
-                    <div id="captions" class="mt-2">
+                    <div v-if="state.show_captions === 'true'" id="captions" class="mt-2">
                         <iframe v-if="state.captions == 'streamtext'" tabindex="-1" :src="`https://www.streamtext.net/player/?event=${state.streamtext}&chat=false&header=false&footer=false&indicator=false&bgc=000000&fgc=ffffff&ff=sans-serif&fs=18&spacing=1.5`" frameborder="0" class="h-56 w-full" title="Captions" aria-live="off"></iframe>
-
-                        <!-- <div v-if="state.captions == 'deepgram'" class="p-4 bg-black text-white">
-                            <p>Deepgram Captions</p>
-                        </div> -->
                     </div>
                 </div>
             </main>
